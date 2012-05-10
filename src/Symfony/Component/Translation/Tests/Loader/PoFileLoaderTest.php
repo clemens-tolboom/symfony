@@ -13,6 +13,7 @@ namespace Symfony\Component\Translation\Tests\Loader;
 
 use Symfony\Component\Translation\Loader\PoFileLoader;
 use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\Translation\Gettext;
 
 class PoFileLoaderTest extends \PHPUnit_Framework_TestCase
 {
@@ -54,4 +55,55 @@ class PoFileLoaderTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('en', $catalogue->getLocale());
         $this->assertEquals(array(new FileResource($resource)), $catalogue->getResources());
     }
+
+    public function testLoadMultiline()
+    {
+        $loader = new PoFileLoader();
+        $resource = __DIR__.'/../fixtures/multiline.po';
+        $catalogue = $loader->load($resource, 'en', 'domain1');
+
+        $this->assertEquals(3, count($catalogue->all('domain1')));
+
+        $messages = $catalogue->all('domain1');
+        $this->assertEquals('trans single line', $messages['both single line']);
+        $this->assertEquals('trans multi line', $messages['source single line']);
+        $this->assertEquals('trans single line', $messages['source multi line']);
+
+    }
+
+    /**
+     * Read file with one item without whitespaces before and after.
+     */
+    public function testLoadMinimalFile()
+    {
+        $loader = new PoFileLoader();
+        $resource = __DIR__.'/../fixtures/minimal.po';
+        $catalogue = $loader->load($resource, 'en', 'domain1');
+        // TODO: This fails on 'source multi line'
+        $this->assertEquals(1, count($catalogue->all('domain1')));
+    }
+
+    /**
+     * Read the PO header and check it's available.
+     */
+    public function testLoadHeader()
+    {
+        $loader = new PoFileLoader();
+        $resource = __DIR__.'/../fixtures/header.po';
+        $catalogue = $loader->load($resource, 'en', 'domain1');
+        $messages = $catalogue->all('domain1');
+        $this->assertEquals(1, count($catalogue->all('domain1')));
+        // Header exists
+        $header = Gettext::getHeader($messages);
+        $this->assertNotNull($header, 'PoFileLoader has a header.');
+        // Is header removed
+        $header = Gettext::delHeader($messages);
+        $header = Gettext::getHeader($messages);
+        $this->assertNull($header, 'PoFileLoader has no header.');
+        // Add header
+        $header = Gettext::addHeader($messages, 'foo');
+        $header = Gettext::getHeader($messages);
+        $this->assertEquals($header, 'foo', 'PoFileLoader has a header.');
+    }
+
 }
